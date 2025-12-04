@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import io from "socket.io-client";
+import socket from "../../lib/socket";
 
-const socket = io("http://localhost:7777");
 
 const Matchmaking = () => {
   const navigate = useNavigate();
