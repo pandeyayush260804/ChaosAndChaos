@@ -51,7 +51,6 @@ const PlayerDashboard = () => {
           <SidebarItem icon={<Settings />} label="Settings" />
         </nav>
 
-        {/* LOGOUT BUTTON */}
         <button
           onClick={handleLogout}
           className="flex items-center gap-3 mt-5 px-4 py-3 rounded-lg bg-red-600 hover:bg-red-700 transition-all"
@@ -70,16 +69,38 @@ const PlayerDashboard = () => {
           className="backdrop-blur-xl bg-white/10 p-8 rounded-2xl border border-white/20 shadow-2xl"
         >
           <h1 className="text-3xl font-bold text-purple-200 mb-4">Player Dashboard</h1>
-          <p className="text-gray-300">Welcome to the futuristic realm of Code & Chaos ⚔️</p>
+          <p className="text-gray-300">
+            Welcome to the futuristic realm of Code & Chaos ⚔️
+          </p>
 
-          {/* FUTURE WIDGETS WILL GO HERE */}
+          {/* MATCHMAKING CARD */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="mt-8 bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl backdrop-blur-xl"
+          >
+            <h2 className="text-2xl font-semibold text-purple-300 mb-2">
+              Ready for Battle?
+            </h2>
+            <p className="text-gray-300 mb-6">
+              Enter the matchmaking arena and face a worthy opponent in real-time.
+            </p>
+
+            <button
+              onClick={() => navigate("/mm")}
+              className="px-6 py-3 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-semibold tracking-wide shadow-md shadow-purple-700/40 transition-all"
+            >
+              Start Matchmaking
+            </button>
+          </motion.div>
+
         </motion.div>
       </main>
     </div>
   );
 };
 
-// 🔹 Sidebar item component
 const SidebarItem = ({ icon, label, active = false }: any) => {
   return (
     <div

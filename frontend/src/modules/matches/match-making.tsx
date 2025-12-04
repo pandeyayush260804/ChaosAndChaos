@@ -29,7 +29,11 @@ const Matchmaking = () => {
 
     socket.on("match_found", (data) => {
       setStatusText("Match Found! Preparing Arena...");
-      setTimeout(() => navigate(`/battle/${data.roomID}`), 1500);
+
+      // ⭐ ONLY CHANGE: Redirect to VS Screen instead of Battle
+      setTimeout(() => {
+        navigate("/vs", { state: data });
+      }, 1500);
     });
 
     return () => {
