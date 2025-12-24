@@ -6,6 +6,7 @@ import CodeEditor from "./components/CodeEditor";
 import OpponentPreview from "./components/OpponentPreview";
 import ProgressBar from "./components/ProgressBar";
 import useBattleSocket from "./hooks/useBattleSocket";
+import RunOutput from "./components/RunOutput";  // ⭐ ADDED
 
 export type Player = { email: string; [k: string]: any };
 
@@ -64,15 +65,15 @@ export default function BattlePage({ roomID, you, opponent }: Props) {
         {/* TOP ROW → Problem + Timer */}
         <div className="grid grid-cols-4 gap-6">
           
-          {/* Problem Panel (3/4 width) */}
+          {/* Problem Panel */}
           <div className="col-span-3">
             <div className="text-xs text-blue-400 font-mono mb-1">ProblemPanel.tsx</div>
             <div className="rounded-xl border border-blue-500/30 bg-white/5 backdrop-blur-xl p-4 shadow-lg">
-              <ProblemPanel />
+              <ProblemPanel roomID={roomID} />
             </div>
           </div>
 
-          {/* Timer (1/4 width) */}
+          {/* Timer */}
           <div className="col-span-1">
             <div className="text-xs text-blue-400 font-mono mb-1">Timer.tsx</div>
             <div className="rounded-xl border border-purple-500/30 bg-white/5 backdrop-blur-xl p-4 shadow-lg">
@@ -83,7 +84,7 @@ export default function BattlePage({ roomID, you, opponent }: Props) {
 
         {/* MIDDLE ROW → Code Editor + Opponent Preview */}
         <div className="grid grid-cols-2 gap-6">
-          
+
           {/* Code Editor */}
           <div>
             <div className="text-xs text-blue-400 font-mono mb-1">CodeEditor.tsx</div>
@@ -110,6 +111,10 @@ export default function BattlePage({ roomID, you, opponent }: Props) {
         </div>
 
       </div>
+
+      {/* ⭐ FLOATING RUN OUTPUT PANEL ⭐ */}
+      <RunOutput roomID={roomID} />
+
     </div>
   );
 }

@@ -1,26 +1,32 @@
-import { useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import socket from "../../../lib/socket";
 
-export default function useEditorSync() {
+export default function useEditorSync(roomID?: string) {
   const [code, setCode] = useState("");
+  const [opponentCode, setOpponentCode] = useState("");
 
-  const setCodeLocal = useCallback(
-    (value: string) => {
-      setCode(value);
+  // when *you* type
+  const setCodeLocal = (value: string) => {
+    setCode(value);
 
-      socket.emit("typing", { typing: true });
-      socket.emit("code_update", { code: value });
+    socket.emit("typing", {
+      roomID,
+      typing: value,
+    });
+  };
 
-      const preview = value.split("\n").slice(0, 8).join("\n");
-      socket.emit("code_preview", { preview });
+  useEffect(() => {
+    if (!roomID) return;
 
-      clearTimeout((setCodeLocal as any)._t);
-      (setCodeLocal as any)._t = setTimeout(() => {
-        socket.emit("typing", { typing: false });
-      }, 900);
-    },
-    []
-  );
+    // receive opponent typing
+    socket.on("opponent_typing", (value: string) => {
+      setOpponentCode(value);
+    });
 
-  return { code, setCodeLocal };
+    return () => {
+      socket.off("opponent_typing");
+    };
+  }, [roomID]);
+
+  return { code, opponentCode, setCodeLocal };
 }

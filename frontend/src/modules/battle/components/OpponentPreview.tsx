@@ -6,12 +6,17 @@ export default function OpponentPreview() {
   const [typing, setTyping] = useState(false);
 
   useEffect(() => {
-    socket.on("opponent_typing", setTyping);
-    socket.on("opponent_preview", setPreview);
+    // opponent typing event → contains their code
+    socket.on("opponent_typing", (code: string) => {
+      setPreview(code);      // show blurred code
+      setTyping(true);
+
+      // remove "typing..." after 1.5 seconds
+      setTimeout(() => setTyping(false), 1500);
+    });
 
     return () => {
       socket.off("opponent_typing");
-      socket.off("opponent_preview");
     };
   }, []);
 
@@ -22,7 +27,7 @@ export default function OpponentPreview() {
       </p>
 
       <pre
-        className="bg-black/40 p-4 rounded border border-white/10 text-xs opacity-75"
+        className="bg-black/40 p-4 rounded border border-white/10 text-xs opacity-75 select-none"
         style={{ filter: "blur(4px)" }}
       >
         {preview || "// waiting for opponent..."}
