@@ -1,35 +1,78 @@
-// sockets/judge.js
-import axios from "axios";
-
-const JUDGE_URL =
-  "https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=false&wait=true";
+// backend/sockets/judge.js
+import { runWithPiston } from "../utils/pistonRunner.js";
+import { roomQuestions } from "./questions.js";
 
 export default function judge(io) {
   io.on("connection", (socket) => {
-    
-    socket.on("run_code", async ({ roomID, language_id, source_code, stdin }) => {
-      try {
-        const response = await axios.post(
-          JUDGE_URL,
-          {
-            language_id,
-            source_code,
-            stdin
-          },
-          {
-            headers: {
-              "X-RapidAPI-Key": process.env.JUDGE_API_KEY,
-              "X-RapidAPI-Host": "judge0-ce.p.rapidapi.com"
-            }
-          }
-        );
 
-        io.to(roomID).emit("code_result", response.data);
+    // 🔹 RUN CODE (no testcase verification)
+    socket.on("run_code", async ({ roomID, language, source_code, stdin }) => {
+      console.log("▶ RUN_CODE", { roomID, language });
 
-      } catch (err) {
-        io.to(roomID).emit("code_result", { error: "Execution Failed" });
-      }
+      const result = await runWithPiston({
+        language,
+        source_code,
+        stdin
+      });
+
+      io.to(roomID).emit("code_result", {
+        roomID,
+        ...result
+      });
     });
 
+    // 🔹 SUBMIT CODE (verify against testcases)
+    socket.on("submit_code", async ({ roomID, language, source_code }) => {
+      console.log("▶ SUBMIT_CODE", { roomID, language });
+
+      const question = roomQuestions[roomID];
+      if (!question) {
+        console.log("❌ No question for room:", roomID);
+        return;
+      }
+
+      let passed = 0;
+      const results = [];
+
+      for (const tc of question.testcases) {
+        const res = await runWithPiston({
+          language,
+          source_code,
+          stdin: tc.stdin
+        });
+
+        const stdout = res.stdout.trim();
+        const expected = tc.expected_output.trim();
+        const ok = stdout === expected;
+
+        console.log("🧪 TC", {
+          stdin: tc.stdin,
+          stdout,
+          expected,
+          ok
+        });
+
+        if (ok) passed++;
+
+        results.push({
+          input: tc.stdin,
+          output: stdout,
+          expected,
+          passed: ok
+        });
+      }
+
+      const score = Math.round((passed / question.testcases.length) * 100);
+
+      io.to(roomID).emit("submit_result", {
+        roomID,
+        score,
+        passed,
+        total: question.testcases.length,
+        results
+      });
+
+      console.log(`🧪 Room ${roomID} → ${score}%`);
+    });
   });
 }

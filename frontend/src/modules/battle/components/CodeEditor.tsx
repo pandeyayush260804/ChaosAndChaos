@@ -7,30 +7,27 @@ type CodeEditorProps = {
   roomID: string;
 };
 
-const languageToJudgeId: Record<string, number> = {
-  python: 71,      // Python (3.8.1) – adjust if needed
-  cpp: 54,         // C++ (GCC)
-  javascript: 63,  // Node.js
-  java: 62,        // Java (OpenJDK 17) - Judge0 ID
-};
+
 
 export default function CodeEditor({ roomID }: CodeEditorProps) {
   const { code, setCodeLocal } = useEditorSync();
   const [lang, setLang] = useState<"python" | "cpp" | "javascript" | "java">("python");
 
   const run = () => {
-    const language_id = languageToJudgeId[lang] ?? 71;
-
     socket.emit("run_code", {
       roomID,
-      language_id,
+      language: lang,
       source_code: code,
       stdin: "",
     });
   };
 
   const submit = () => {
-    socket.emit("submit_code", { roomID });
+    socket.emit("submit_code", {
+      roomID,
+      language: lang,
+      source_code: code,
+    });
   };
 
   const handleEditorChange = (value: string | undefined) => {

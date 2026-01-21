@@ -1,33 +1,49 @@
-// sockets/questions.js
+// backend/sockets/questions.js
 
 const QUESTIONS = [
   {
-    id: 1,
+    id: "two-sum",
     title: "Two Sum",
     description: "Find two numbers that add up to the target.",
     difficulty: "Easy",
+    testcases: [
+      { stdin: "2 7\n", expected_output: "9\n" },
+      { stdin: "3 4\n", expected_output: "7\n" },
+      { stdin: "10 20\n", expected_output: "30\n" },
+      { stdin: "1 99\n", expected_output: "100\n" }
+    ]
   },
   {
-    id: 2,
+    id: "reverse-linked-list",
     title: "Reverse Linked List",
     description: "Reverse a singly linked list.",
     difficulty: "Medium",
-  },
-  {
-    id: 3,
-    title: "Valid Parentheses",
-    description: "Check if parentheses are valid.",
-    difficulty: "Easy",
+    testcases: [
+      { stdin: "1 2 3 4\n", expected_output: "4 3 2 1\n" },
+      { stdin: "5 6\n", expected_output: "6 5\n" }
+    ]
   }
 ];
+
+// roomID -> locked question
+export const roomQuestions = {};
 
 export default function questions(io) {
   io.on("connection", (socket) => {
     socket.on("request_question", (roomID) => {
-      const randomQ = QUESTIONS[Math.floor(Math.random() * QUESTIONS.length)];
+      if (roomQuestions[roomID]) return;
 
-      io.to(roomID).emit("question_sent", randomQ);
-      console.log("📨 Question Sent to Room:", roomID);
+      const q = QUESTIONS[Math.floor(Math.random() * QUESTIONS.length)];
+      roomQuestions[roomID] = q;
+
+      io.to(roomID).emit("question_sent", {
+        id: q.id,
+        title: q.title,
+        description: q.description,
+        difficulty: q.difficulty
+      });
+
+      console.log("📨 Question locked:", roomID, q.id);
     });
   });
 }
