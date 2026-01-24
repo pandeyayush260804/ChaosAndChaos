@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Editor from "@monaco-editor/react";
 import socket from "../../../lib/socket";
 import useEditorSync from "../hooks/useEditorSync";
@@ -15,11 +15,11 @@ export default function CodeEditor({ roomID }: CodeEditorProps) {
   const [battleActive, setBattleActive] = useState(true);
   const [submitted, setSubmitted] = useState(false);
 
-  useEffect(() => {
-    socket.on("timer_end", () => {
-      setBattleActive(false);
-    });
+  // 🔥 throttle typing events
+  const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  useEffect(() => {
+    socket.on("timer_end", () => setBattleActive(false));
     return () => {
       socket.off("timer_end");
     };
@@ -27,7 +27,6 @@ export default function CodeEditor({ roomID }: CodeEditorProps) {
 
   const run = () => {
     if (!battleActive || !code.trim()) return;
-
     socket.emit("run_code", {
       roomID,
       language: lang,
@@ -38,9 +37,7 @@ export default function CodeEditor({ roomID }: CodeEditorProps) {
 
   const submit = () => {
     if (!battleActive || !code.trim()) return;
-
     setSubmitted(true);
-
     socket.emit("submit_code", {
       roomID,
       language: lang,
@@ -48,8 +45,19 @@ export default function CodeEditor({ roomID }: CodeEditorProps) {
     });
   };
 
-  const handleEditorChange = (value: string | undefined) => {
-    setCodeLocal(value ?? "");
+  const handleEditorChange = (value?: string) => {
+    const newCode = value ?? "";
+    setCodeLocal(newCode);
+
+    // 🔥 emit typing (throttled)
+    if (typingTimer.current) clearTimeout(typingTimer.current);
+
+    typingTimer.current = setTimeout(() => {
+      socket.emit("opponent_typing", {
+        roomID,
+        code: newCode.slice(0, 500), // safety limit
+      });
+    }, 300);
   };
 
   const monacoLanguage =
@@ -63,17 +71,16 @@ export default function CodeEditor({ roomID }: CodeEditorProps) {
 
   return (
     <div className="flex flex-col h-[420px]">
-      {/* Top bar */}
       <div className="flex justify-between items-center mb-3">
         <span className="text-sm text-gray-400">Your Code</span>
 
         <div className="flex gap-2 items-center">
           <select
             disabled={submitted}
-            className="bg-black/40 p-1 text-sm rounded border border-white/20 disabled:opacity-50"
+            className="bg-black/40 p-1 text-sm rounded border border-white/20"
             value={lang}
             onChange={(e) =>
-              setLang(e.target.value as "python" | "cpp" | "javascript" | "java")
+              setLang(e.target.value as any)
             }
           >
             <option value="python">Python</option>
@@ -85,7 +92,7 @@ export default function CodeEditor({ roomID }: CodeEditorProps) {
           <button
             onClick={run}
             disabled={!battleActive}
-            className="px-3 py-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 rounded text-xs"
+            className="px-3 py-1 bg-blue-600 rounded text-xs"
           >
             Run
           </button>
@@ -93,14 +100,13 @@ export default function CodeEditor({ roomID }: CodeEditorProps) {
           <button
             onClick={submit}
             disabled={!battleActive || submitted}
-            className="px-3 py-1 bg-green-600 hover:bg-green-500 disabled:opacity-50 rounded text-xs"
+            className="px-3 py-1 bg-green-600 rounded text-xs"
           >
             Submit
           </button>
         </div>
       </div>
 
-      {/* Monaco Editor */}
       <div className="flex-1 border border-white/15 rounded-xl overflow-hidden bg-black/60">
         <Editor
           height="100%"
@@ -111,12 +117,8 @@ export default function CodeEditor({ roomID }: CodeEditorProps) {
           options={{
             minimap: { enabled: false },
             fontSize: 14,
-            fontLigatures: true,
-            smoothScrolling: true,
-            scrollBeyondLastLine: false,
-            automaticLayout: true,
             wordWrap: "on",
-            padding: { top: 10, bottom: 10 },
+            automaticLayout: true,
           }}
         />
       </div>

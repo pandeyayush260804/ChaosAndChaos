@@ -11,21 +11,16 @@ export default function QuitConfirmModal({ roomID, onClose }: Props) {
 
   const confirmQuit = () => {
     socket.emit("player_quit", { roomID });
-    socket.emit("leave_room", { roomID });
-
-    socket.disconnect();
-    socket.connect();
-
+    onClose();
     navigate("/pd");
   };
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
       <div className="bg-zinc-900 p-6 rounded-xl w-96 text-center">
-
         <h2 className="text-xl font-bold text-red-400">Quit Battle?</h2>
         <p className="text-gray-400 text-sm mt-2">
-          You will lose this match if you quit.
+          You will lose this match.
         </p>
 
         <div className="flex justify-center gap-4 mt-6">
@@ -36,7 +31,6 @@ export default function QuitConfirmModal({ roomID, onClose }: Props) {
             Quit
           </button>
         </div>
-
       </div>
     </div>
   );

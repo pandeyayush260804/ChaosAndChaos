@@ -6,12 +6,10 @@ export default function OpponentPreview() {
   const [typing, setTyping] = useState(false);
 
   useEffect(() => {
-    // opponent typing event → contains their code
     socket.on("opponent_typing", (code: string) => {
-      setPreview(code);      // show blurred code
+      setPreview(code);
       setTyping(true);
 
-      // remove "typing..." after 1.5 seconds
       setTimeout(() => setTyping(false), 1500);
     });
 

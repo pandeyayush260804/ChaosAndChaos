@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import socket from "../../lib/socket";
 
 import PlayerPanels from "./components/PlayerPanels";
@@ -10,11 +11,14 @@ import OpponentPreview from "./components/OpponentPreview";
 import ProgressBar from "./components/ProgressBar";
 import RunOutput from "./components/RunOutput";
 import WinnerModal from "./components/WinnerModal";
-import QuitConfirmModal from "./components/QuitConfirmModal"; // 🆕 NEW
+import QuitConfirmModal from "./components/QuitConfirmModal";
 
 import useBattleSocket from "./hooks/useBattleSocket";
 
-export type Player = { email: string; [k: string]: any };
+export type Player = {
+  email: string;
+  [k: string]: any;
+};
 
 type Props = {
   roomID: string;
@@ -25,146 +29,111 @@ type Props = {
 export default function BattlePage({ roomID, you, opponent }: Props) {
   useBattleSocket(roomID);
 
-  const [battleResult, setBattleResult] = useState<any>(null);
-  const [showQuit, setShowQuit] = useState(false); // 🆕 NEW
+  const navigate = useNavigate();
 
-  // 🏆 Listen for winner result
+  // ✅ browser-safe timeout type
+  const redirectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [battleResult, setBattleResult] = useState<any>(null);
+  const [showQuit, setShowQuit] = useState(false);
+
+  /**
+   * FINAL RESULT FLOW
+   * 1. Show winner/loser/draw
+   * 2. Wait 5 seconds
+   * 3. Leave socket room
+   * 4. Redirect dashboard
+   */
   useEffect(() => {
-    socket.on("battle_result", (data) => {
+    const onBattleResult = (data: any) => {
       console.log("🏆 Battle Result:", data);
-      setBattleResult(data);
-    });
+
+      // prevent double overwrite
+      setBattleResult((prev: any) => prev ?? data);
+
+      redirectTimer.current = setTimeout(() => {
+        socket.emit("leave_room", { roomID });
+        navigate("/pd");
+      }, 5000);
+    };
+
+    socket.on("battle_result", onBattleResult);
 
     return () => {
-      socket.off("battle_result");
+      socket.off("battle_result", onBattleResult);
+      if (redirectTimer.current) clearTimeout(redirectTimer.current);
     };
-  }, []);
+  }, [navigate, roomID]);
 
   return (
     <div className="relative min-h-screen w-full bg-black text-white overflow-hidden flex flex-col items-center">
 
-      {/* 🔴 QUIT BUTTON (NEW) */}
-      <button
-        onClick={() => setShowQuit(true)}
-        className="absolute top-6 right-6 px-4 py-2 bg-red-600 hover:bg-red-500 rounded-lg text-sm font-semibold z-20"
-      >
-        Quit
-      </button>
+      {/* QUIT BUTTON (disabled once result is shown) */}
+      {!battleResult && (
+        <button
+          onClick={() => setShowQuit(true)}
+          className="absolute top-6 right-6 px-4 py-2 bg-red-600 hover:bg-red-500 rounded-lg text-sm font-semibold z-20"
+        >
+          Quit
+        </button>
+      )}
 
-      {/* ✨ Cyber Grid Background */}
+      {/* BACKGROUND */}
       <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-20 pointer-events-none" />
 
-      {/* ✨ Moving Neon Lines */}
       <motion.div
         className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-purple-600/20 mix-blend-overlay"
         animate={{ opacity: [0.2, 0.35, 0.2] }}
         transition={{ duration: 6, repeat: Infinity }}
       />
 
-      {/* ✨ Floating Neon Orbs */}
-      <motion.div
-        className="absolute w-[900px] h-[900px] bg-blue-700 rounded-full blur-[250px] opacity-20 -top-40 -left-40"
-        animate={{ x: [-80, 80, -80], y: [-50, 50, -50] }}
-        transition={{ duration: 15, repeat: Infinity }}
-      />
-      <motion.div
-        className="absolute w-[700px] h-[700px] bg-purple-700 rounded-full blur-[220px] opacity-20 bottom-40 right-40"
-        animate={{ x: [60, -60, 60], y: [40, -40, 40] }}
-        transition={{ duration: 18, repeat: Infinity }}
-      />
-
-      {/* 🔹 HEADER */}
+      {/* HEADER */}
       <div className="text-center mt-8 z-10">
-        <h1 className="text-5xl font-bold text-blue-300 drop-shadow-[0_0_12px_#3b82f6]">
+        <h1 className="text-5xl font-bold text-blue-300">
           BATTLE ARENA ⚔️
         </h1>
         <p className="text-gray-300 mt-2 text-lg">
-          Room ID:{" "}
-          <span className="text-blue-400 font-semibold">{roomID}</span>
+          Room ID: <span className="text-blue-400">{roomID}</span>
         </p>
       </div>
 
-      {/* 🔹 PLAYER PANELS */}
+      {/* PLAYERS */}
       <div className="mt-10 z-10">
         <PlayerPanels you={you} opponent={opponent} />
       </div>
 
-      {/* 🔹 MAIN GRID */}
+      {/* MAIN GRID */}
       <div className="mt-10 w-full max-w-7xl px-6 space-y-6 z-10">
-
-        {/* TOP ROW → Problem + Timer */}
         <div className="grid grid-cols-4 gap-6">
-
-          {/* Problem Panel */}
           <div className="col-span-3">
-            <div className="text-xs text-blue-400 font-mono mb-1">
-              ProblemPanel.tsx
-            </div>
-            <div className="rounded-xl border border-blue-500/30 bg-white/5 backdrop-blur-xl p-4 shadow-lg">
-              <ProblemPanel roomID={roomID} />
-            </div>
+            <ProblemPanel roomID={roomID} />
           </div>
-
-          {/* Timer */}
           <div className="col-span-1">
-            <div className="text-xs text-blue-400 font-mono mb-1">
-              Timer.tsx
-            </div>
-            <div className="rounded-xl border border-purple-500/30 bg-white/5 backdrop-blur-xl p-4 shadow-lg">
-              <Timer />
-            </div>
+            <Timer />
           </div>
         </div>
 
-        {/* MIDDLE ROW → Code Editor + Opponent Preview */}
         <div className="grid grid-cols-2 gap-6">
-
-          {/* Code Editor */}
-          <div>
-            <div className="text-xs text-blue-400 font-mono mb-1">
-              CodeEditor.tsx
-            </div>
-            <div className="rounded-xl border border-blue-500/30 bg-white/5 backdrop-blur-xl p-4 shadow-xl">
-              <CodeEditor roomID={roomID} />
-            </div>
-          </div>
-
-          {/* Opponent Preview */}
-          <div>
-            <div className="text-xs text-pink-400 font-mono mb-1">
-              OpponentPreview.tsx
-            </div>
-            <div className="rounded-xl border border-pink-500/30 bg-white/5 backdrop-blur-xl p-4 shadow-xl">
-              <OpponentPreview />
-            </div>
-          </div>
+          <CodeEditor roomID={roomID} />
+          <OpponentPreview />
         </div>
 
-        {/* BOTTOM ROW → Progress Bar */}
-        <div>
-          <div className="text-xs text-green-400 font-mono mb-1">
-            ProgressBar.tsx
-          </div>
-          <div className="rounded-xl border border-green-500/30 bg-white/5 backdrop-blur-xl p-4 shadow-lg">
-            <ProgressBar />
-          </div>
-        </div>
+        <ProgressBar />
       </div>
 
-      {/* ⭐ FLOATING RUN OUTPUT PANEL ⭐ */}
+      {/* RUN OUTPUT */}
       <RunOutput roomID={roomID} />
 
-      {/* 🏆 WINNER MODAL */}
+      {/* RESULT MODAL */}
       {battleResult && <WinnerModal result={battleResult} />}
 
-      {/* 🔴 QUIT CONFIRM MODAL (NEW) */}
-      {showQuit && (
+      {/* QUIT CONFIRM */}
+      {showQuit && !battleResult && (
         <QuitConfirmModal
           roomID={roomID}
           onClose={() => setShowQuit(false)}
         />
       )}
-
     </div>
   );
 }

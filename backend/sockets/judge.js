@@ -10,6 +10,7 @@ import {
 export default function judge(io) {
   io.on("connection", (socket) => {
 
+    // ▶ RUN CODE
     socket.on("run_code", async ({ roomID, language, source_code, stdin }) => {
       if (!roomTimers[roomID]) return;
 
@@ -22,6 +23,7 @@ export default function judge(io) {
       io.to(roomID).emit("code_result", { roomID, ...result });
     });
 
+    // ▶ SUBMIT CODE
     socket.on("submit_code", async ({ roomID, language, source_code }) => {
       if (!roomTimers[roomID]) return;
 
@@ -29,7 +31,6 @@ export default function judge(io) {
       if (!question) return;
 
       let passed = 0;
-
       for (const tc of question.testcases) {
         const res = await runWithPiston({
           language,
@@ -37,9 +38,7 @@ export default function judge(io) {
           stdin: tc.stdin,
         });
 
-        if (res.stdout.trim() === tc.expected_output.trim()) {
-          passed++;
-        }
+        if (res.stdout.trim() === tc.expected_output.trim()) passed++;
       }
 
       const score = Math.round(
@@ -47,10 +46,16 @@ export default function judge(io) {
       );
 
       recordSubmission(roomID, socket.id, score);
-
       decideWinner(roomID, io);
     });
 
+    // ▶ OPPONENT TYPING (NEW 🔥)
+    socket.on("opponent_typing", ({ roomID, code }) => {
+      // send to everyone EXCEPT sender
+      socket.to(roomID).emit("opponent_typing", code);
+    });
+
+    // ▶ PLAYER QUIT
     socket.on("player_quit", ({ roomID }) => {
       if (!roomTimers[roomID]) return;
 
