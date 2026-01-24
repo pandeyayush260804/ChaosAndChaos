@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Editor from "@monaco-editor/react";
 import socket from "../../../lib/socket";
 import useEditorSync from "../hooks/useEditorSync";
@@ -7,13 +7,27 @@ type CodeEditorProps = {
   roomID: string;
 };
 
-
-
 export default function CodeEditor({ roomID }: CodeEditorProps) {
   const { code, setCodeLocal } = useEditorSync();
-  const [lang, setLang] = useState<"python" | "cpp" | "javascript" | "java">("python");
+  const [lang, setLang] =
+    useState<"python" | "cpp" | "javascript" | "java">("python");
+
+  const [battleActive, setBattleActive] = useState(true);
+  const [submitted, setSubmitted] = useState(false);
+
+  useEffect(() => {
+    socket.on("timer_end", () => {
+      setBattleActive(false);
+    });
+
+    return () => {
+      socket.off("timer_end");
+    };
+  }, []);
 
   const run = () => {
+    if (!battleActive || !code.trim()) return;
+
     socket.emit("run_code", {
       roomID,
       language: lang,
@@ -23,6 +37,10 @@ export default function CodeEditor({ roomID }: CodeEditorProps) {
   };
 
   const submit = () => {
+    if (!battleActive || !code.trim()) return;
+
+    setSubmitted(true);
+
     socket.emit("submit_code", {
       roomID,
       language: lang,
@@ -31,11 +49,9 @@ export default function CodeEditor({ roomID }: CodeEditorProps) {
   };
 
   const handleEditorChange = (value: string | undefined) => {
-    // useEditorSync already handles typing + preview emit
     setCodeLocal(value ?? "");
   };
 
-  // Map UI lang to Monaco lang string
   const monacoLanguage =
     lang === "cpp"
       ? "cpp"
@@ -47,13 +63,14 @@ export default function CodeEditor({ roomID }: CodeEditorProps) {
 
   return (
     <div className="flex flex-col h-[420px]">
-      {/* Top bar: label + controls */}
+      {/* Top bar */}
       <div className="flex justify-between items-center mb-3">
         <span className="text-sm text-gray-400">Your Code</span>
 
         <div className="flex gap-2 items-center">
           <select
-            className="bg-black/40 p-1 text-sm rounded border border-white/20"
+            disabled={submitted}
+            className="bg-black/40 p-1 text-sm rounded border border-white/20 disabled:opacity-50"
             value={lang}
             onChange={(e) =>
               setLang(e.target.value as "python" | "cpp" | "javascript" | "java")
@@ -67,13 +84,16 @@ export default function CodeEditor({ roomID }: CodeEditorProps) {
 
           <button
             onClick={run}
-            className="px-3 py-1 bg-blue-600 hover:bg-blue-500 rounded text-xs"
+            disabled={!battleActive}
+            className="px-3 py-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 rounded text-xs"
           >
             Run
           </button>
+
           <button
             onClick={submit}
-            className="px-3 py-1 bg-green-600 hover:bg-green-500 rounded text-xs"
+            disabled={!battleActive || submitted}
+            className="px-3 py-1 bg-green-600 hover:bg-green-500 disabled:opacity-50 rounded text-xs"
           >
             Submit
           </button>

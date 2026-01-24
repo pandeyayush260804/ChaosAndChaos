@@ -1,4 +1,5 @@
 // backend/sockets/questions.js
+import { startBattleTimer } from "../utils/battleTimer.js";
 
 const QUESTIONS = [
   {
@@ -42,6 +43,9 @@ export default function questions(io) {
         description: q.description,
         difficulty: q.difficulty
       });
+
+      // ⏱️ START 5‑MINUTE TIMER
+      startBattleTimer(io, roomID, 300);
 
       console.log("📨 Question locked:", roomID, q.id);
     });

@@ -1,12 +1,18 @@
 import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
+import socket from "../../lib/socket";
+
 import PlayerPanels from "./components/PlayerPanels";
 import ProblemPanel from "./components/ProblemPanel";
 import Timer from "./components/Timer";
 import CodeEditor from "./components/CodeEditor";
 import OpponentPreview from "./components/OpponentPreview";
 import ProgressBar from "./components/ProgressBar";
+import RunOutput from "./components/RunOutput";
+import WinnerModal from "./components/WinnerModal";
+import QuitConfirmModal from "./components/QuitConfirmModal"; // 🆕 NEW
+
 import useBattleSocket from "./hooks/useBattleSocket";
-import RunOutput from "./components/RunOutput";  // ⭐ ADDED
 
 export type Player = { email: string; [k: string]: any };
 
@@ -19,8 +25,31 @@ type Props = {
 export default function BattlePage({ roomID, you, opponent }: Props) {
   useBattleSocket(roomID);
 
+  const [battleResult, setBattleResult] = useState<any>(null);
+  const [showQuit, setShowQuit] = useState(false); // 🆕 NEW
+
+  // 🏆 Listen for winner result
+  useEffect(() => {
+    socket.on("battle_result", (data) => {
+      console.log("🏆 Battle Result:", data);
+      setBattleResult(data);
+    });
+
+    return () => {
+      socket.off("battle_result");
+    };
+  }, []);
+
   return (
     <div className="relative min-h-screen w-full bg-black text-white overflow-hidden flex flex-col items-center">
+
+      {/* 🔴 QUIT BUTTON (NEW) */}
+      <button
+        onClick={() => setShowQuit(true)}
+        className="absolute top-6 right-6 px-4 py-2 bg-red-600 hover:bg-red-500 rounded-lg text-sm font-semibold z-20"
+      >
+        Quit
+      </button>
 
       {/* ✨ Cyber Grid Background */}
       <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-20 pointer-events-none" />
@@ -50,7 +79,8 @@ export default function BattlePage({ roomID, you, opponent }: Props) {
           BATTLE ARENA ⚔️
         </h1>
         <p className="text-gray-300 mt-2 text-lg">
-          Room ID: <span className="text-blue-400 font-semibold">{roomID}</span>
+          Room ID:{" "}
+          <span className="text-blue-400 font-semibold">{roomID}</span>
         </p>
       </div>
 
@@ -64,10 +94,12 @@ export default function BattlePage({ roomID, you, opponent }: Props) {
 
         {/* TOP ROW → Problem + Timer */}
         <div className="grid grid-cols-4 gap-6">
-          
+
           {/* Problem Panel */}
           <div className="col-span-3">
-            <div className="text-xs text-blue-400 font-mono mb-1">ProblemPanel.tsx</div>
+            <div className="text-xs text-blue-400 font-mono mb-1">
+              ProblemPanel.tsx
+            </div>
             <div className="rounded-xl border border-blue-500/30 bg-white/5 backdrop-blur-xl p-4 shadow-lg">
               <ProblemPanel roomID={roomID} />
             </div>
@@ -75,7 +107,9 @@ export default function BattlePage({ roomID, you, opponent }: Props) {
 
           {/* Timer */}
           <div className="col-span-1">
-            <div className="text-xs text-blue-400 font-mono mb-1">Timer.tsx</div>
+            <div className="text-xs text-blue-400 font-mono mb-1">
+              Timer.tsx
+            </div>
             <div className="rounded-xl border border-purple-500/30 bg-white/5 backdrop-blur-xl p-4 shadow-lg">
               <Timer />
             </div>
@@ -87,7 +121,9 @@ export default function BattlePage({ roomID, you, opponent }: Props) {
 
           {/* Code Editor */}
           <div>
-            <div className="text-xs text-blue-400 font-mono mb-1">CodeEditor.tsx</div>
+            <div className="text-xs text-blue-400 font-mono mb-1">
+              CodeEditor.tsx
+            </div>
             <div className="rounded-xl border border-blue-500/30 bg-white/5 backdrop-blur-xl p-4 shadow-xl">
               <CodeEditor roomID={roomID} />
             </div>
@@ -95,7 +131,9 @@ export default function BattlePage({ roomID, you, opponent }: Props) {
 
           {/* Opponent Preview */}
           <div>
-            <div className="text-xs text-pink-400 font-mono mb-1">OpponentPreview.tsx</div>
+            <div className="text-xs text-pink-400 font-mono mb-1">
+              OpponentPreview.tsx
+            </div>
             <div className="rounded-xl border border-pink-500/30 bg-white/5 backdrop-blur-xl p-4 shadow-xl">
               <OpponentPreview />
             </div>
@@ -104,16 +142,28 @@ export default function BattlePage({ roomID, you, opponent }: Props) {
 
         {/* BOTTOM ROW → Progress Bar */}
         <div>
-          <div className="text-xs text-green-400 font-mono mb-1">ProgressBar.tsx</div>
+          <div className="text-xs text-green-400 font-mono mb-1">
+            ProgressBar.tsx
+          </div>
           <div className="rounded-xl border border-green-500/30 bg-white/5 backdrop-blur-xl p-4 shadow-lg">
             <ProgressBar />
           </div>
         </div>
-
       </div>
 
       {/* ⭐ FLOATING RUN OUTPUT PANEL ⭐ */}
       <RunOutput roomID={roomID} />
+
+      {/* 🏆 WINNER MODAL */}
+      {battleResult && <WinnerModal result={battleResult} />}
+
+      {/* 🔴 QUIT CONFIRM MODAL (NEW) */}
+      {showQuit && (
+        <QuitConfirmModal
+          roomID={roomID}
+          onClose={() => setShowQuit(false)}
+        />
+      )}
 
     </div>
   );

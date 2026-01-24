@@ -9,7 +9,7 @@ const PlayerDashboard = () => {
   // 🚨 BLOCK ACCESS IF NO TOKEN
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (!token) navigate("/player/login");
+    if (!token) navigate("/ds");
   }, []);
 
   // 🚨 LOGOUT FUNCTION
