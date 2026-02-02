@@ -1,7 +1,10 @@
-import { decideWinner } from "./battleResult.js";
+import { roomResults } from "./battleResult.js";
 
 export const roomTimers = {};
 
+/* ===============================
+   START TIMER
+=============================== */
 export function startBattleTimer(io, roomID, duration = 300) {
   const startTime = Date.now();
 
@@ -17,13 +20,11 @@ export function startBattleTimer(io, roomID, duration = 300) {
 
       io.to(roomID).emit("timer_end");
 
-      // auto‑decide winner on timer end
-      const winner = decideWinner(roomID);
-
-      if (!winner) {
+      // 🔥 DRAW ONLY IF NO WINNER YET
+      const data = roomResults[roomID];
+      if (!data || !data.winnerDeclared) {
         io.to(roomID).emit("battle_result", { type: "draw" });
-      } else {
-        io.to(roomID).emit("battle_result", winner);
+        delete roomResults[roomID];
       }
 
       return;
@@ -33,6 +34,9 @@ export function startBattleTimer(io, roomID, duration = 300) {
   }, 1000);
 }
 
+/* ===============================
+   STOP TIMER
+=============================== */
 export function stopBattleTimer(roomID) {
   if (roomTimers[roomID]) {
     clearInterval(roomTimers[roomID].interval);

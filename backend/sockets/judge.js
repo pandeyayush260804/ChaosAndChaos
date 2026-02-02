@@ -30,7 +30,8 @@ export default function judge(io) {
       const question = roomQuestions[roomID];
       if (!question) return;
 
-      let passed = 0;
+      let passed = false;
+
       for (const tc of question.testcases) {
         const res = await runWithPiston({
           language,
@@ -38,20 +39,24 @@ export default function judge(io) {
           stdin: tc.stdin,
         });
 
-        if (res.stdout.trim() === tc.expected_output.trim()) passed++;
+        if (res.stdout.trim() === tc.expected_output.trim()) {
+          passed = true;
+          break; // 🔥 FIRST CORRECT → STOP
+        }
       }
 
-      const score = Math.round(
-        (passed / question.testcases.length) * 100
-      );
+      const score = passed ? 100 : 0;
 
       recordSubmission(roomID, socket.id, score);
-      decideWinner(roomID, io);
+
+      // 🔥 FIRST CORRECT SUBMISSION WINS
+      if (passed) {
+        decideWinner(roomID, io, socket.id);
+      }
     });
 
-    // ▶ OPPONENT TYPING (NEW 🔥)
+    // ▶ OPPONENT TYPING
     socket.on("opponent_typing", ({ roomID, code }) => {
-      // send to everyone EXCEPT sender
       socket.to(roomID).emit("opponent_typing", code);
     });
 

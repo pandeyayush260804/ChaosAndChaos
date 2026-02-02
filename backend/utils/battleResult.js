@@ -1,52 +1,112 @@
+import { saveMatchHistory } from "../services/match-history-service.js";
+import { roomPlayers } from "./roomPlayers.js";
+
 export const roomResults = {};
 
+/* ===============================
+   STORE SUBMISSION
+=============================== */
 export function recordSubmission(roomID, socketId, score) {
   if (!roomResults[roomID]) {
-    roomResults[roomID] = { submissions: {} };
+    roomResults[roomID] = {
+      winnerDeclared: false,
+    };
   }
 
-  roomResults[roomID].submissions[socketId] = {
+  roomResults[roomID][socketId] = {
     score,
     submittedAt: Date.now(),
   };
 }
 
-// called after BOTH submit
-export function decideWinner(roomID, io) {
+/* ===============================
+   FIRST CORRECT WINS
+=============================== */
+export async function decideWinner(roomID, io, winnerSocketId) {
+  if (!io || !winnerSocketId) return;
+
+  const room = io.sockets.adapter.rooms.get(roomID);
   const data = roomResults[roomID];
-  if (!data) return;
 
-  const entries = Object.entries(data.submissions);
-  if (entries.length < 2) return;
+  if (!room || !data || data.winnerDeclared) return;
 
-  entries.sort((a, b) => {
-    if (b[1].score !== a[1].score) return b[1].score - a[1].score;
-    return a[1].submittedAt - b[1].submittedAt;
-  });
+  data.winnerDeclared = true;
 
-  if (
-    entries[0][1].score === entries[1][1].score &&
-    entries[0][1].submittedAt === entries[1][1].submittedAt
-  ) {
-    io.to(roomID).emit("battle_result", { type: "draw" });
-    return;
+  console.log("🏆 WINNER SOCKET:", winnerSocketId);
+
+  const sockets = [...room];
+  const loserSocketId = sockets.find((id) => id !== winnerSocketId);
+
+  const players = roomPlayers[roomID] || {};
+
+  const winnerEmail = players[winnerSocketId];
+  const loserEmail = players[loserSocketId];
+
+  console.log("📧 WINNER EMAIL:", winnerEmail);
+  console.log("📧 LOSER EMAIL:", loserEmail);
+
+  // emit result (UNCHANGED)
+  for (const socketId of room) {
+    io.to(socketId).emit("battle_result", {
+      type: socketId === winnerSocketId ? "winner" : "loser",
+      score: 100,
+    });
   }
 
-  io.to(entries[0][0]).emit("battle_result", {
-    type: "winner",
-    score: entries[0][1].score,
-  });
+  /* 🔥 SAVE MATCH HISTORY */
+  try {
+    if (winnerEmail && loserEmail) {
+      console.log("📦 SAVING MATCH HISTORY (SUBMIT)");
 
-  io.to(entries[1][0]).emit("battle_result", {
-    type: "loser",
-    score: entries[0][1].score,
-  });
+      await saveMatchHistory({
+        roomID,
+        playerEmail: winnerEmail,
+        opponentEmail: loserEmail,
+        result: "win",
+        score: 100,
+        reason: "submission_successful",
+      });
+
+      await saveMatchHistory({
+        roomID,
+        playerEmail: loserEmail,
+        opponentEmail: winnerEmail,
+        result: "lose",
+        score: 100,
+        reason: "submission_successful_by_opponent",
+      });
+
+      console.log("✅ MATCH HISTORY SAVED (SUBMIT)");
+    } else {
+      console.warn("⚠️ Emails missing, history NOT saved");
+    }
+  } catch (err) {
+    console.error("❌ Failed to save match history:", err.message);
+  }
+
+  delete roomResults[roomID];
+  delete roomPlayers[roomID]; // 🧹 cleanup
 }
 
-// called when someone quits
-export function decideWinnerOnQuit(roomID, quitterId, io) {
+/* ===============================
+   QUIT LOGIC
+=============================== */
+export async function decideWinnerOnQuit(roomID, quitterId, io) {
   const room = io.sockets.adapter.rooms.get(roomID);
   if (!room) return;
+
+  console.log("🚪 PLAYER QUIT:", quitterId);
+
+  const sockets = [...room];
+  const winnerSocketId = sockets.find((id) => id !== quitterId);
+
+  const players = roomPlayers[roomID] || {};
+
+  const winnerEmail = players[winnerSocketId];
+  const quitterEmail = players[quitterId];
+
+  console.log("📧 WINNER EMAIL:", winnerEmail);
+  console.log("📧 QUITTER EMAIL:", quitterEmail);
 
   for (const socketId of room) {
     if (socketId !== quitterId) {
@@ -56,4 +116,36 @@ export function decideWinnerOnQuit(roomID, quitterId, io) {
       });
     }
   }
+
+  /* 🔥 SAVE MATCH HISTORY */
+  try {
+    if (winnerEmail && quitterEmail) {
+      console.log("📦 SAVING MATCH HISTORY (QUIT)");
+
+      await saveMatchHistory({
+        roomID,
+        playerEmail: winnerEmail,
+        opponentEmail: quitterEmail,
+        result: "win",
+        reason: "opponent_quit",
+      });
+
+      await saveMatchHistory({
+        roomID,
+        playerEmail: quitterEmail,
+        opponentEmail: winnerEmail,
+        result: "lose",
+        reason: "quit",
+      });
+
+      console.log("✅ MATCH HISTORY SAVED (QUIT)");
+    } else {
+      console.warn("⚠️ Emails missing, history NOT saved");
+    }
+  } catch (err) {
+    console.error("❌ Failed to save match history:", err.message);
+  }
+
+  delete roomResults[roomID];
+  delete roomPlayers[roomID]; // 🧹 cleanup
 }

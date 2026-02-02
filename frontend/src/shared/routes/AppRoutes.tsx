@@ -10,6 +10,12 @@ import AdminDashboard from "@/modules/admin/pages/admin-dashboard";
 import Matchmaking from "@/modules/matches/match-making";
 import VsScreen from "@/modules/matches/VsScreen";
 import Battle from "@/modules/matches/battle";
+import MatchHistory from "@/modules/history/pages/MatchHistory";
+import Leaderboard from "@/modules/leaderboard/pages/Leaderboard";
+import PlayerStats from "@/modules/leaderboard/pages/PlayerStats";
+import AdminMatches from "@/modules/admin/pages/admin-matches";
+import AdminPlayers from "@/modules/admin/pages/admin-players";
+import AdminLeaderboard from "@/modules/admin/pages/admin-leaderboard";
 
 const AppRoutes = () => {
   return (
@@ -25,6 +31,14 @@ const AppRoutes = () => {
       <Route path="/mm" element={<Matchmaking />} />
       <Route path="/vs" element={<VsScreen />} />
       <Route path="/battle/:roomID" element={<Battle />} />
+      <Route path="/match-history" element={<MatchHistory />} />
+      <Route path="/leaderboard" element={<Leaderboard />} />
+      <Route path="/stats" element={<PlayerStats />} />
+
+      <Route path="/admin/matches" element={<AdminMatches />} />
+      <Route path="/admin/players" element={<AdminPlayers />} />
+      <Route path="/admin/leaderboard" element={<AdminLeaderboard/>} />
+
     </Routes>
   );
 };

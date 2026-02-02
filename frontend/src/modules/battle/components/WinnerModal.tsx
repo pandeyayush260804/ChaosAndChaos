@@ -15,7 +15,7 @@ export default function WinnerModal({ result }: Props) {
           <h2 className="text-3xl font-bold text-red-400">😔 You Lost</h2>
         )}
 
-        {result.score && (
+        {result.score !== undefined && (
           <p className="text-gray-400 mt-2">Score: {result.score}%</p>
         )}
 

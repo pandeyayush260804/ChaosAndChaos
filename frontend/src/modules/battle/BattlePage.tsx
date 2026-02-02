@@ -27,6 +27,13 @@ type Props = {
 };
 
 export default function BattlePage({ roomID, you, opponent }: Props) {
+  // 🔍 MOUNT LOG
+  console.log("⚔️ BattlePage mounted", {
+    roomID,
+    you: you?.email,
+    opponent: opponent?.email,
+  });
+
   useBattleSocket(roomID);
 
   const navigate = useNavigate();
@@ -45,13 +52,24 @@ export default function BattlePage({ roomID, you, opponent }: Props) {
    * 4. Redirect dashboard
    */
   useEffect(() => {
+    console.log("📡 Attaching battle_result listener for room:", roomID);
+
     const onBattleResult = (data: any) => {
-      console.log("🏆 Battle Result:", data);
+      console.log("🎯 BATTLE RESULT RECEIVED (frontend):", data);
 
       // prevent double overwrite
-      setBattleResult((prev: any) => prev ?? data);
+      setBattleResult((prev: any) => {
+        if (prev) {
+          console.warn("⚠️ battleResult already set, ignoring new value");
+          return prev;
+        }
+        return data;
+      });
+
+      console.log("⏳ Starting redirect timer (5s)");
 
       redirectTimer.current = setTimeout(() => {
+        console.log("🚪 Leaving room & redirecting to dashboard");
         socket.emit("leave_room", { roomID });
         navigate("/pd");
       }, 5000);
@@ -60,14 +78,18 @@ export default function BattlePage({ roomID, you, opponent }: Props) {
     socket.on("battle_result", onBattleResult);
 
     return () => {
+      console.log("🧹 Cleaning up battle_result listener");
       socket.off("battle_result", onBattleResult);
-      if (redirectTimer.current) clearTimeout(redirectTimer.current);
+
+      if (redirectTimer.current) {
+        console.log("⛔ Clearing redirect timer");
+        clearTimeout(redirectTimer.current);
+      }
     };
   }, [navigate, roomID]);
 
   return (
     <div className="relative min-h-screen w-full bg-black text-white overflow-hidden flex flex-col items-center">
-
       {/* QUIT BUTTON (disabled once result is shown) */}
       {!battleResult && (
         <button

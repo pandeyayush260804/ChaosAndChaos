@@ -1,5 +1,6 @@
 // sockets/matchmaking.js
 import { v4 as uuidv4 } from "uuid";
+import { roomPlayers } from "../utils/roomPlayers.js"; // ✅ ADDED
 
 let queue = []; // Waiting players
 
@@ -12,7 +13,9 @@ export default function matchmaking(io) {
       console.log("➡ join_queue request:", email);
 
       // ❗ Prevent SAME PLAYER joining multiple times
-      const alreadyQueued = queue.some((p) => p.playerData.email === email);
+      const alreadyQueued = queue.some(
+        (p) => p.playerData.email === email
+      );
       if (alreadyQueued) {
         console.log("⚠ Player already in queue:", email);
         return;
@@ -30,13 +33,30 @@ export default function matchmaking(io) {
         // ❗ EXTRA SAFETY: prevent same email
         if (p1.playerData.email === p2.playerData.email) {
           console.log("❌ Same player detected, re-queueing p1...");
-          queue.push(p1); // put first back in queue
+          queue.push(p1);
           return;
         }
 
         // Create room
         const roomID = `room_${uuidv4()}`;
         console.log("🎯 Match Found → Room:", roomID);
+
+        /* ===============================
+           🔥 ONLY ADDED BLOCK (NO LOGIC CHANGE)
+        =============================== */
+        roomPlayers[roomID] = {
+          [p1.socket.id]: p1.playerData.email,
+          [p2.socket.id]: p2.playerData.email,
+        };
+
+        console.log(
+          "👥 ROOM PLAYERS SET:",
+          roomID,
+          roomPlayers[roomID]
+        );
+        /* ===============================
+           🔥 END ADDED BLOCK
+        =============================== */
 
         // Move both players to room
         p1.socket.join(roomID);
