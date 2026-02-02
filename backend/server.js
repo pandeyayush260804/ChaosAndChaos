@@ -22,7 +22,17 @@ const httpServer = http.createServer(app);
 // ----------------------
 // MIDDLEWARES
 // ----------------------
-app.use(cors());
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://your-app.vercel.app"
+];
+
+app.use(cors({
+  origin: allowedOrigins,
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true
+}));
+
 app.use(express.json());
 
 // ----------------------
@@ -61,8 +71,13 @@ mainDB.on("error", (err) => {
 // SOCKET.IO SETUP
 // ----------------------
 const io = new Server(httpServer, {
-  cors: { origin: "*", methods: ["GET", "POST"] },
+  cors: {
+    origin: allowedOrigins,
+    methods: ["GET", "POST"],
+    credentials: true
+  }
 });
+
 
 // 🔥 Attach feature-specific sockets (matchmaking, questions, battle, judge...)
 socketManager(io);
