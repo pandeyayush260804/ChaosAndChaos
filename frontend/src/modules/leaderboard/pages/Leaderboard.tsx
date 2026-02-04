@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { fetchLeaderboard, fetchMyRank } from "../api/leaderboard-api";
-import { Trophy, Crown } from "lucide-react";
+import { Crown } from "lucide-react";
 
 type Player = {
   _id: string;
