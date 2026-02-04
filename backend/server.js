@@ -11,7 +11,7 @@ import { Server } from "socket.io";
 import { indexRoute } from "./api/v1/routes/index.js";
 import { Error404 } from "./utils/middlewares/error404.js";
 import { createMainConnection } from "./utils/db/connection.js";
-import socketManager from "./sockets/index.js"; // ⭐ global socket modules (matchmaking, battle, questions, judge)
+import socketManager from "./sockets/index.js";
 
 // ----------------------
 // EXPRESS + HTTP SETUP
@@ -20,18 +20,15 @@ const app = express();
 const httpServer = http.createServer(app);
 
 // ----------------------
-// MIDDLEWARES
+// MIDDLEWARES (TEMP: OPEN CORS)
 // ----------------------
-const allowedOrigins = [
-  "http://localhost:5173",
-  "https://your-app.vercel.app"
-];
-
-app.use(cors({
-  origin: allowedOrigins,
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: true, // ✅ allow all origins safely (for now)
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
+  })
+);
 
 app.use(express.json());
 
@@ -43,6 +40,14 @@ app.use("/api/v1", indexRoute);
 // Test Route
 app.get("/", (req, res) => {
   res.json({ msg: "Code & Chaos Backend Running ⚔️🔥" });
+});
+
+// Health Check (recommended for Render)
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "OK",
+    uptime: process.uptime(),
+  });
 });
 
 // 404 Handler
@@ -59,12 +64,18 @@ mainDB.on("connected", () => {
   const PORT = process.env.PORT || 7777;
 
   httpServer.listen(PORT, () => {
-    console.log(chalk.greenBright.bold(`🚀 Server running on Port: ${PORT}`));
+    console.log(
+      chalk.greenBright.bold(`🚀 Server running on Port: ${PORT}`)
+    );
   });
 });
 
 mainDB.on("error", (err) => {
-  console.log(chalk.redBright.bold("❌ Main DB Connection Failed"), err);
+  console.log(
+    chalk.redBright.bold("❌ Main DB Connection Failed"),
+    err
+  );
+  process.exit(1);
 });
 
 // ----------------------
@@ -72,30 +83,29 @@ mainDB.on("error", (err) => {
 // ----------------------
 const io = new Server(httpServer, {
   cors: {
-    origin: allowedOrigins,
+    origin: true, // ✅ allow all origins (for now)
     methods: ["GET", "POST"],
-    credentials: true
-  }
+    credentials: true,
+  },
 });
 
-
-// 🔥 Attach feature-specific sockets (matchmaking, questions, battle, judge...)
+// Attach feature-specific sockets
 socketManager(io);
 
-// Basic connection logs + room join/leave
+// Basic socket lifecycle
 io.on("connection", (socket) => {
   console.log(chalk.green(`⚡ Player Connected: ${socket.id}`));
 
-  // ✅ Join a battle room for question / code / timer sync
   socket.on("join_room", ({ roomID }) => {
     if (!roomID) return;
 
     socket.join(roomID);
-    socket.emit("joined_room", { roomID }); // ack back to this client
+    socket.emit("joined_room", { roomID });
 
-    console.log(chalk.blue(`🔗 Socket ${socket.id} joined room: ${roomID}`));
+    console.log(
+      chalk.blue(`🔗 Socket ${socket.id} joined room: ${roomID}`)
+    );
 
-    // Optional debug: list room members
     const members = io.sockets.adapter.rooms.get(roomID) || new Set();
     console.log(
       chalk.yellow(`👥 Members in ${roomID}:`),
@@ -103,11 +113,12 @@ io.on("connection", (socket) => {
     );
   });
 
-  // ✅ Leave room on demand (optional, but neat)
   socket.on("leave_room", ({ roomID }) => {
     if (!roomID) return;
     socket.leave(roomID);
-    console.log(chalk.magenta(`⤵ Socket ${socket.id} left room: ${roomID}`));
+    console.log(
+      chalk.magenta(`⤵ Socket ${socket.id} left room: ${roomID}`)
+    );
   });
 
   socket.on("disconnect", () => {
@@ -115,4 +126,5 @@ io.on("connection", (socket) => {
   });
 });
 
-export { io }; // optional, only if you use io elsewhere
+// Optional export
+export { io };
